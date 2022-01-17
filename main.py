@@ -1,8 +1,60 @@
 #local_info.csv has all data except password.
 #password.dat has passwords in binary
-#table in local_info.csv: | serial no. | username | account level | number of machines | monthly charge |
+#table in local_info.csv: | serial no. | username | account level | plan | monthly charge |
 
-import csv, pickle as p
+import csv, pickle as p, mysql.connector as mc
+
+conn = mc.connect(
+    host="localhost",
+    user="root",
+    passwd="Kr15hn4@a"
+)
+
+cur = conn.cursor()
+
+cur.execute("create database if not exists gym;")
+cur.execute("use gym;")
+
+cur.execute("""
+CREATE TABLE if not exists user(
+    userID int PRIMARY KEY AUTO_INCREMENT,
+    name varchar(50), 
+    account_lvl varchar(2) check(account_lvl in ("I", "II")),
+    charge int,
+    mobile char(10) UNSIGNED,
+    address VARCHAR(200)    
+);
+""")
+
+cur.execute("""
+CREATE TABLE if not exists plans(
+    pname varchar(50), 
+    account_lvl varchar(2) check(account_lvl in ("I", "II")),
+    mobile char(10) UNSIGNED,
+    address VARCHAR(200),
+    userID int PRIMARY KEY AUTO_INCREMENT
+);
+""")
+
+cur.execute("""
+CREATE TABLE if not exists bill(
+    buserID int unique,
+    bname varchar(50), 
+    bmobile char(10) UNSIGNED,
+    billID int PRIMARY KEY AUTO_INCREMENT,
+    bdate date
+);
+""")
+
+cur.execute("insert into user(, 'k', 'II', 0, '1234567890', 'abc') if 'k' not in user.name;")
+
+def m_c():
+    with open("local_info.csv", "a") as f:
+        fw = csv.writer(f)
+        fw.writerows(cur.execute("select * from user;"))
+
+
+
 with open('local_info.csv', "r") as f:
     gym = list(csv.reader(f))
 
