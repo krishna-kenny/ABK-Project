@@ -1,98 +1,192 @@
-#local_info.csv has all data except password.
-#password.dat has passwords in binary
-#table in local_info.csv: | serial no. | username | account level | plan | monthly charge |
+#
 
-import csv, pickle as p, mysql.connector as mc
+import pickle as p
+import mysql.connector as ms
 
-conn = mc.connect(
+conn = ms.connect(
     host="localhost",
     user="root",
-    passwd="Kr15hn4@a"
+    password="dpsbn"
 )
 
-cur = conn.cursor()
+cur = conn.cursor(buffered = True)
 
 cur.execute("create database if not exists gym;")
 cur.execute("use gym;")
 
 cur.execute("""
 CREATE TABLE if not exists user(
-    userID int PRIMARY KEY AUTO_INCREMENT,
+    uid int PRIMARY KEY auto_increment,
     name varchar(50), 
-    account_lvl varchar(2) check(account_lvl in ("I", "II")),
-    charge int,
-    mobile char(10) UNSIGNED,
-    address VARCHAR(200)    
+    account_lvl varchar(2),
+    pid int, 
+    cost int,
+    phone int(10),
+    address VARCHAR(200),
+    password varchar(25)  
 );
 """)
 
 cur.execute("""
 CREATE TABLE if not exists plans(
-    pname varchar(50), 
-    account_lvl varchar(2) check(account_lvl in ("I", "II")),
-    mobile char(10) UNSIGNED,
-    address VARCHAR(200),
-    userID int PRIMARY KEY AUTO_INCREMENT
+    pid int primary key,
+    pname varchar(50),
+    pduration varchar(25) not null,
+    pcost int not null 
 );
 """)
 
 cur.execute("""
 CREATE TABLE if not exists bill(
-    buserID int unique,
+    bid int primary key not null auto_increment,
+    bdate date not null,
+    buid int,
     bname varchar(50), 
-    bmobile char(10) UNSIGNED,
-    billID int PRIMARY KEY AUTO_INCREMENT,
-    bdate date
+    bcost int not null
 );
 """)
 
-cur.execute("insert into user(, 'k', 'II', 0, '1234567890', 'abc') if 'k' not in user.name;")
+cur.execute("insert into user values(null, 'krishna', 'II', 4, 12500, '1234567890', 'address', '!@#$');")
 
-def m_c():
-    with open("local_info.csv", "a") as f:
-        fw = csv.writer(f)
-        fw.writerows(cur.execute("select * from user;"))
+def encrypt(p):
+    key = {"0": ")","1": "!", "2": "@", "3": "#", "4": "$", "5": "%", "6": "^", "7": "&", "8": "*", "9": "("}
+    password = ""
+    for l in p:
+        password += key[l]
+    return password
 
 
 
-with open('local_info.csv', "r") as f:
-    gym = list(csv.reader(f))
+def decrypt(p):
+    inv_key = {v: k for k, v in {"0": ")","1": "!", "2": "@", "3": "#", "4": "$", "5": "%", "6": "^", "7": "&", "8": "*", "9": "("}.items()}
+    password = ""
+    for l in p:
+        password += inv_key[l]
+    return password
 
-def find(username, gym = gym):
-    n = 0
-    while n < len(gym):        
-        if gym[n][1] == username:
-            sno = gym[n][0]
-            return gym[n]
-        n+=1    
-    return False      
 
-def new_account(username, password, gym = gym):
-    
-    new = 0
-    gym.append([len(gym), username, "I", int(new), 100*int(new)])    
-    while True:
-        new = input("Number of machines per day [we have max of 50]: ")
-        if float(new) > 0 and float(new) <= 50 and float(new) == int(new):
-            find(username)[3] = int(new)
-            charge = 100*int(new)
-            print(f"Your monthly charge is {charge}")
-            break
-        elif new == "exit":
-            break
+
+#common to user and admin
+def new_account():
+    name = input("name: ")
+    password = input("password [number only]: ")
+    print("""
+    plans:
+        1] day    | 200
+        2] week   | 500
+        3] month  | 1500
+        4] year   | 12500      
+""")
+    plan = input("plan [enter number]: ")
+    cur.execute(f"select pcost from plans where pid = '{plan}'")
+    cost = cur.fetchone()[0]
+    ph = input("phone: ")
+    addr = input("address: ") 
+    cur.execute(f"insert into user values(NULL, '{name}', 'I', {plan}, {cost}, '{ph}', '{addr}', '{encrypt(password)}');")
+    print("your account has been created.")
+
+
+
+def del_account(uid):
+
+    if input("are you sure? [yes/no]: ") == "no":
+        return 0
+    else:
+
+        if cur.execute(f"select account_lvl from user where uid = {uid};") == "I":
+            cur.execute(f"delete from user where uid = {uid};")            
         else:
-            print("* invalid value *")
+            acc = input("uid account to be deleted: ")
+            cur.execute(f"delete from user where uid = {acc};")
 
-    
-    with open("password.dat", "ab") as fb:
-        p.dump(password, fb)
+        print("the account is now deleted.")
+
+    cur.fetchall()
 
 
-def log_in(username):
-    global gym 
-    print(f"Welcome back {username}")
 
-    if find(username)[2] == "I":
+def change_plan(uid):
+
+    print("""
+    plans:
+        1] day    | 200
+        2] week   | 500
+        3] month  | 1500
+        4] year   | 12500      
+""")    
+
+    if cur.execute(f"select account_lvl from user where uid = {uid};") == "I":
+        plan = input("new plan [enter number]: ")
+        cur.execute(f"update user pid = {plan} where uid = {uid};")            
+    else:
+        acc = input("uid account to be changed: ")
+        plan = input("new plan [enter number]: ")
+        cur.execute(f"update user pid = {plan} where uid = {acc};")
+            
+    print("the account is now deleted.")
+
+    cur.fetchall()
+
+
+#user only
+def bill(uid):
+
+    if input("are you sure [yes/no]: ") == "no":
+        return 0
+    else:
+
+        user_rec = cur.execute(f"select * from user where uid = {uid};")
+        print(f"""
+    bill preview:   [ bid | current_date() | {user_rec[0]} | {user_rec[1]} | {user_rec[4]} ]      
+""")
+        if input("proceed? [yes/no]: ") == "no":
+            return 0
+        else:
+            cur.execute(f"insert into bill values(null, current_date(), {user_rec[0]}, {user_rec[1]}, {user_rec[4]});")
+            print("you have been billed successfully.")
+
+    cur.fetchall()
+          
+        
+#admin only
+def display_all(uid):
+    inp = input("""
+    tables: 
+        1] user
+        2] plans
+        3] bill
+""")
+    dct = {
+        "1": "user",
+        "2": "plans",
+        "3": "bill"
+    }
+    for rec in cur.execute(f"select * from {dct[inp]};"):
+        print(rec)
+
+    cur.fetchall()
+
+
+
+def god_mode(uid):
+    if cur.execute(f"select account_lvl from user where uid = {uid};") == "I":
+        return 0
+    else:
+        command = input("enter mysql update command:\n")
+        cur.execute(f"{command}")
+        print("data updated.")
+
+    print(cur.fetchall())
+
+
+
+#log in
+def log_in(uid):
+    cur.execute(f"select name from user where uid = {uid};")
+    print(f"Welcome back {cur.fetchone()[0]}")
+    cur.execute(f"select account_lvl from user where uid = {uid};")
+
+    if cur.fetchone()[0] == "I":
         
         while True:
             b = input("""
@@ -101,159 +195,99 @@ def log_in(username):
 |                                                                |
 |    1] see your gym information                                 |
 |                                                                |
-|    2] change number of machines                                |
+|    2] change plan                                              |
 |                                                                |
-|    3] logout                                                   |
+|    3] logout
+
+     4]delete account                                                   |
 |-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
 """)
             if b == "1":
-                print("| serial no. | username | account level | number of machines | monthly charge |")
-                print(find(username))
-            elif b == "2":                
-                machines = find(username)[3]
-                print(f"* current amount of machines is {machines} *")
-
-                while True:
-                    new = input(" New number of machines per day [we have max of 50]: ")
-                    if float(new) > 0 and float(new) <= 50 and float(new) == int(new):
-                        rec = find(username)
-                        rec[3] = int(new)
-                        rec[4] = 100*int(new)
-                        charge = 100*int(new)
-
-                        gym[int(rec[0])] = rec
-                        print(f"* new value added successfully. new monthly charge is {charge} *")
-                        break
-                    elif new == "exit":
-                        break
-                    else:
-                        print("* invalid value *")
-                        
+                cur.execute(f"select * from user where uid = {uid};")
+                print(cur.fetchone())
+            elif b == "2": 
+                change_plan(uid)
             elif b == "3":
-                print("* thank you *")
                 break
-            elif b == "exit":
-                    break
+            elif b == "4":
+                del_account(uid)
             else:
-                print("* invalid input *")
+                print("invalid input")
         
-    elif find(username)[2] == "II":
+    else:
+
         while True:
             b = input("""
 |-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
 |                           MENU                                 |
 |                                                                |
-|    1] see all members gym information                          |
+|    1] see your gym information
+
+    2] change your plan.
+
+     3]see all gym members's information                                 |
 |                                                                |
-|    2] Update your Membership plan                              |
+|    4] update any record  
+
+    5]delete any record                                      |
 |                                                                |
-|    3] logout                                                   |
-|                                                                |
+|    6] logout                                                   |
 |-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
 """)
             if b == "1":
-                print("| serial no. | username | account level | number of machines | monthly charge |")
-                for rec in gym:
-                    print(rec)
+                cur.execute(f"select * from user where uid = {uid};")
+                print(cur.fetchone())
+            elif b == "2": 
+                change_plan(uid)
             elif b == "3":
-                print("* thank you *")
+                cur.execute(f"select * from user;")
+                for line in cur.fetchall():
+                    print(line)
+            elif b == "4":
+                god_mode(uid)
+            elif b == "5":
+                del_account(uid)
+            elif b == "6":
                 break
-            elif b == "exit":
-                    break
-            elif b == '2':
-                 Plan = int(input('''
-|-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
-|                           MENU                                 |
-|                                                                |
-|  1] Daily Plan (₹2,000/-)                                      |
-|                                                                |
-|  2] Weekly Plan (₹5,000/-)                                     |
-|                                                                |
-|  3] Monthly Plan (₹20,000/-)                                   |
-|                                                                |
-|  4] Yearly Plan (₹70,000/-)                                    |
-|                                                                |
-|-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
-'''))
-                 if Plan == 1:
-                     print('* Your Membership plan has been updated to the Daily plan. *')
-                 elif Plan == 2:
-                     print('* Your Membership plan has been updated to the Weekly Plan. *')
-                 elif Plan == 3:
-                     print('* Your Membership plan has been updated to the Monthly Plan. *')
-                 elif Plan == 4:
-                     print('* Your Membership plan has been updated to the Yearly Plan. *')
-                 else:
-                     print('** Please choose one of the 4 membership plans. **')
-            
             else:
-                print("* invalid input *")
-
-    else:
-        return False
+                print("invalid input")
+    cur.fetchall()
     
 
 
-def inp():
-    global gym 
-    while True:
-        a = input("""
-|-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
-|                           MENU                                 |
-|           [Enter serial no. of option to select it]            |
-|                                                                |
-|    1] log in                                                   |
-|                                                                |
-|    2] sign up                                                  |
-|                                                                |
-|    3] exit [enter "exit" at any point to reach here]           |
-|                                                                |
-|                                                                |
-|-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
+while True:
+    inp = input("""
+    MENU:   
+        1] log in
+        2] new account
+        3] exit    
 """)
 
-        if a == "1":
-            while True:
-                print("")
-                username = input("Enter username: ")
+    if inp == "1":
+        username = input("username: ")
+        password = input("password: ")
+        cur.execute(f"select count(uid) from user where name = '{username}' and password = '{encrypt(password)}';")
 
-                if find(username) != False:                    
-                    password = input("Enter password: ")
-
-                    with open("password.dat", "rb") as f:
-                        for line in range(int(find(username)[0])):                 
-                            t = p.load(f)
-                        if password == p.load(f):
-                            log_in(username)
-                            break
-                        elif password == "exit":
-                            break
-                        else:
-                            print("* incorrect password *")
-                elif username == "exit":
-                    break
-                else:
-                    print(f"* no user with username: {username} *")
-
-        elif a == "2":
-            username = input("Enter username [password or username cannot be changed]: ")
-            password = input("Enter password: ")
-
-            if username == "exit" or password == "exit":
-                break
-            elif find(username) == False:
-                print("* New account created *")
-                new_account(username, password)                            
-            else:
-                print("* Account with this username already exists *")
-       
-        elif a == "3" or "exit":
-            print("* thank you *")
-            break
-        
+        if cur.fetchone() == "0":
+            print("incorrect details.")
+            continue
         else:
-            print("* invalid input *")
+            cur.execute(f"select uid from user where name = '{username}' and password = '{encrypt(password)}';")
+            uid = cur.fetchone()[0]
+            print(uid)
+            log_in(uid)
+                   
 
-inp()
-with open("local_info.csv", "w") as f:
-    csv.writer(f).writerows(gym)
+    elif inp == "2":
+        new_account()
+
+    elif inp == "3":
+        break
+
+    else:
+        print("invalid input")
+
+print("thank you")
+
+cur.close()
+conn.close()
