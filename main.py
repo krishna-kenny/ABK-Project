@@ -46,6 +46,11 @@ CREATE TABLE if not exists bill(
 );
 """)
 
+cur.execute("""insert into plans values(
+    (1, )
+
+);""")
+
 cur.execute("insert into user values(null, 'krishna', 'II', 4, 12500, '1234567890', 'address', '!@#$');")
 
 def encrypt(p):
@@ -199,7 +204,7 @@ def log_in(uid):
 |                                                                |
 |    3] logout
 
-     4]delete account                                                   |
+     4]delete account                                            |
 |-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
 """)
             if b == "1":
