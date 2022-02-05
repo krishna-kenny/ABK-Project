@@ -1,7 +1,5 @@
-#
-
-import pickle as p
 import mysql.connector as ms
+from datetime import datetime
 
 conn = ms.connect(
     host="localhost",
@@ -31,7 +29,7 @@ cur.execute("""
 CREATE TABLE if not exists plans(
     pid int primary key,
     pname varchar(50),
-    pduration varchar(25) not null,
+    pduration int,
     pcost int not null 
 );
 """)
@@ -46,12 +44,19 @@ CREATE TABLE if not exists bill(
 );
 """)
 
-cur.execute("""insert into plans values(
-    (1, )
+cur.execute("""insert into plans values 
+    (1, "day", 1, 200),
+    (2, "week", 7, 500),
+    (3, "month", 30, 1500),
+    (4, "year", 365, 12500)
+;""")
 
-);""")
 
-cur.execute("insert into user values(null, 'krishna', 'II', 4, 12500, '1234567890', 'address', '!@#$');")
+cur.execute("select count(uid) from user;")
+if cur.fetchall()[0][0] == 0:
+    cur.execute("insert into user values (1, 'k', 'II', 4, 12500, '1234567890', 'address', '!@#$');")
+
+
 
 def encrypt(p):
     key = {"0": ")","1": "!", "2": "@", "3": "#", "4": "$", "5": "%", "6": "^", "7": "&", "8": "*", "9": "("}
@@ -140,15 +145,20 @@ def bill(uid):
         return 0
     else:
 
-        user_rec = cur.execute(f"select * from user where uid = {uid};")
+        cur.execute(f"select * from user where uid = {uid};")
+        user_rec = cur.fetchone()
+        
         print(f"""
-    bill preview:   [ bid | current_date() | {user_rec[0]} | {user_rec[1]} | {user_rec[4]} ]      
+    bill preview:   [ bill ID | date | user ID | username | amount ]
+                    [ bid | {datetime.date(datetime.now())} | {user_rec[0]} | {user_rec[1]} | {user_rec[4]} ]      
 """)
-        if input("proceed? [yes/no]: ") == "no":
-            return 0
-        else:
-            cur.execute(f"insert into bill values(null, current_date(), {user_rec[0]}, {user_rec[1]}, {user_rec[4]});")
+
+        if input("proceed? [yes/no]: ") == "yes":
+            cur.execute(f"insert into bill values (null, {datetime.date(datetime.now())}, {user_rec[0]}, {user_rec[1]}, {user_rec[4]});")
             print("you have been billed successfully.")
+        else:
+            return 0
+
 
     cur.fetchall()
           
@@ -180,8 +190,10 @@ def god_mode(uid):
         command = input("enter mysql update command:\n")
         cur.execute(f"{command}")
         print("data updated.")
-
-    print(cur.fetchall())
+    try:    
+        print(cur.fetchall())
+    except:
+        pass
 
 
 
@@ -200,11 +212,13 @@ def log_in(uid):
 |                                                                |
 |    1] see your gym information                                 |
 |                                                                |
-|    2] change plan                                              |
-|                                                                |
-|    3] logout
+|    2] change plan
 
-     4]delete account                                            |
+     3] print bill                                              |
+|                                                                |
+|    4] logout
+
+     5]delete account                                            |
 |-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
 """)
             if b == "1":
@@ -213,8 +227,10 @@ def log_in(uid):
             elif b == "2": 
                 change_plan(uid)
             elif b == "3":
-                break
+                bill(uid)
             elif b == "4":
+                break
+            elif b == "5":
                 del_account(uid)
             else:
                 print("invalid input")
@@ -230,13 +246,15 @@ def log_in(uid):
 
     2] change your plan.
 
-     3]see all gym members's information                                 |
-|                                                                |
-|    4] update any record  
+    3]print bill
 
-    5]delete any record                                      |
+     4]see all gym members's information                                 |
 |                                                                |
-|    6] logout                                                   |
+|    5] update any record  
+
+    6]delete any record                                      |
+|                                                                |
+|    7] logout                                                   |
 |-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X|
 """)
             if b == "1":
@@ -245,14 +263,16 @@ def log_in(uid):
             elif b == "2": 
                 change_plan(uid)
             elif b == "3":
+                bill(uid)
+            elif b == "4":
                 cur.execute(f"select * from user;")
                 for line in cur.fetchall():
                     print(line)
-            elif b == "4":
-                god_mode(uid)
             elif b == "5":
-                del_account(uid)
+                god_mode(uid)
             elif b == "6":
+                del_account(uid)
+            elif b == "7":
                 break
             else:
                 print("invalid input")
@@ -271,16 +291,15 @@ while True:
     if inp == "1":
         username = input("username: ")
         password = input("password: ")
-        cur.execute(f"select count(uid) from user where name = '{username}' and password = '{encrypt(password)}';")
+        cur.execute(f"select count(uid), uid from user where name = '{username}' and password = '{encrypt(password)}';")
+        rec = cur.fetchone()
+        print(rec)
 
-        if cur.fetchone() == "0":
+        if rec[0] == 0:
             print("incorrect details.")
             continue
         else:
-            cur.execute(f"select uid from user where name = '{username}' and password = '{encrypt(password)}';")
-            uid = cur.fetchone()[0]
-            print(uid)
-            log_in(uid)
+            log_in(rec[1])
                    
 
     elif inp == "2":
@@ -294,5 +313,7 @@ while True:
 
 print("thank you")
 
+
+cur.flush()
 cur.close()
 conn.close()
