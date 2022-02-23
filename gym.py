@@ -151,10 +151,9 @@ def change_plan(uid):
         else:
             uid = int(input("uid of account to be changed: "))
             plan = int(input("new plan [enter number]: "))
-            print(plans, plans[plan])
             p = plans[plan]
             cur.execute(f"update user set pid = {plan}, cost = {p} where uid = {uid};")
-                
+                            
         print("the account plan is now updated.")
         
     except:
