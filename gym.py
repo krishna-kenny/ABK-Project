@@ -103,8 +103,6 @@ def new_account():
     except:
         print("error")
 
-    
-
 
 
 def del_account(uid):
@@ -145,7 +143,7 @@ def change_plan(uid):
     """)    
         cur.execute(f"select account_lvl from user where uid = {uid};")
         if cur.fetchone()[0] == "I":
-            plan = input("new plan [enter number]: ")
+            plan = int(input("new plan [enter number]: "))
             p = plans[plan]
             cur.execute(f"update user set pid = {plan}, cost = {p} where uid = {uid};")            
         else:
