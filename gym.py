@@ -20,7 +20,7 @@ CREATE TABLE if not exists user(
     account_lvl varchar(2),
     pid int, 
     cost int,
-    phone varchar(15),
+    phone int(10),
     address VARCHAR(200),
     password varchar(25)  
 );
@@ -31,7 +31,7 @@ CREATE TABLE if not exists plans(
     pid int primary key,
     pname varchar(50),
     pduration int,
-    pcost int not null 
+    pcost
 );
 """)
 
@@ -95,13 +95,15 @@ def new_account():
      plan = input("plan [enter number]: ")
      cur.execute(f"select pcost from plans where pid = '{plan}'")
      cost = cur.fetchone()[0]
-     ph = input("phone: ")     
+     ph = input("phone: ")
      addr = input("address: ")
      cur.execute(f"insert into user values(NULL, '{name}', 'I', {plan}, {cost}, '{ph}', '{addr}', '{encrypt(password)}');")
      print("your account has been created.")
 
     except:
         print("error")
+
+    
 
 
 
